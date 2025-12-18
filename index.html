@@ -1,0 +1,1502 @@
+<!doctype html>
+<html lang="id" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistem Monitoring IJP</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      box-sizing: border-box;
+      font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      text-transform: uppercase;
+    }
+    
+    .nav-item {
+      transition: all 0.3s ease;
+    }
+    
+    .nav-item.active {
+      background-color: rgba(59, 130, 246, 0.1);
+      border-left: 4px solid #3b82f6;
+    }
+    
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .mobile-sidebar {
+        position: fixed;
+        top: 0;
+        left: -250px;
+        width: 250px;
+        height: 100%;
+        z-index: 1000;
+        transition: left 0.3s ease;
+        background-color: #ffffff;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+      }
+      
+      .mobile-sidebar.open {
+        left: 0;
+      }
+      
+      .mobile-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+      }
+      
+      .mobile-overlay.show {
+        display: block;
+      }
+      
+      .mobile-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px;
+        background-color: #ffffff;
+        border-bottom: 1px solid #e5e7eb;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+      
+      .mobile-menu-btn {
+        padding: 8px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 24px;
+      }
+      
+      .desktop-sidebar {
+        display: none;
+      }
+    }
+    
+    @media (min-width: 769px) {
+      .mobile-header {
+        display: none;
+      }
+      
+      .mobile-sidebar {
+        position: relative;
+        left: 0;
+      }
+    }
+    
+    .section {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .section.active {
+      display: block;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .stat-card {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+    
+    .toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 16px 24px;
+      border-radius: 8px;
+      color: white;
+      font-weight: 500;
+      z-index: 1000;
+      animation: slideIn 0.3s ease;
+      max-width: 400px;
+    }
+    
+    @keyframes slideIn {
+      from { transform: translateX(400px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    
+    .toast.success { background-color: #10b981; }
+    .toast.error { background-color: #ef4444; }
+    .toast.info { background-color: #3b82f6; }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    .form-label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: #374151;
+    }
+    
+    .form-input, .form-select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: border-color 0.2s ease;
+      text-transform: uppercase;
+    }
+    
+    .form-input:focus, .form-select:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .btn {
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+    }
+    
+    .btn-primary {
+      background-color: #3b82f6;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background-color: #2563eb;
+    }
+    
+    .btn-primary:disabled {
+      background-color: #9ca3af;
+      cursor: not-allowed;
+    }
+    
+    .table-container {
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 600px;
+    }
+    
+    th {
+      background-color: #f9fafb;
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      color: #374151;
+      border-bottom: 2px solid #e5e7eb;
+      white-space: nowrap;
+    }
+    
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    @media (max-width: 768px) {
+      th, td {
+        padding: 8px;
+        font-size: 12px;
+      }
+      
+      .stat-card {
+        padding: 16px !important;
+      }
+      
+      .stat-card > div:first-child {
+        font-size: 12px !important;
+      }
+      
+      .stat-card > div:last-child {
+        font-size: 24px !important;
+      }
+    }
+    
+    tr:last-child td {
+      border-bottom: none;
+    }
+    
+    tr:hover {
+      background-color: #f9fafb;
+    }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    
+    .status-aktif {
+      background-color: #d1fae5;
+      color: #065f46;
+    }
+    
+    .status-rusak {
+      background-color: #fee2e2;
+      color: #991b1b;
+    }
+    
+    .status-nonaktif {
+      background-color: #e5e7eb;
+      color: #374151;
+    }
+    
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f4f6;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .maintenance-warning {
+      animation: blink 1s infinite;
+      background-color: #fee2e2;
+    }
+    
+    @keyframes blink {
+      0%, 50%, 100% { background-color: #fee2e2; }
+      25%, 75% { background-color: #fca5a5; }
+    }
+    
+    .filter-section {
+      background-color: #ffffff;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      align-items: end;
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full w-full overflow-auto"><!-- Mobile Overlay -->
+  <div class="mobile-overlay" id="mobile-overlay"></div><!-- Mobile Header -->
+  <div class="mobile-header"><button type="button" class="mobile-menu-btn" id="mobile-menu-btn">☰</button>
+   <h1 style="font-size: 16px; font-weight: 700; color: #1f2937;">SISTEM MONITORING IJP</h1>
+   <div style="width: 32px;"></div>
+  </div>
+  <div class="flex h-full w-full" style="background-color: #f3f4f6;"><!-- Sidebar -->
+   <aside class="mobile-sidebar desktop-sidebar" id="sidebar" style="width: 250px; background-color: #ffffff; border-right: 1px solid #e5e7eb;">
+    <div style="padding: 24px; border-bottom: 1px solid #e5e7eb;">
+     <h1 id="app-title" style="font-size: 20px; font-weight: 700; color: #1f2937;">SISTEM MONITORING IJP</h1>
+     <p id="company-name" style="font-size: 14px; color: #6b7280; margin-top: 4px;">PT. CONTOH</p>
+    </div>
+    <nav style="padding: 16px;"><button type="button" class="nav-item active w-full text-left px-4 py-3 rounded-lg mb-2" data-target="dashboard" style="background: none; border: none; cursor: pointer;"> <span style="font-size: 14px; color: #374151;">📊 DASHBOARD</span> </button> <button type="button" class="nav-item w-full text-left px-4 py-3 rounded-lg mb-2" data-target="input-ijp" style="background: none; border: none; cursor: pointer;"> <span style="font-size: 14px; color: #374151;">➕ INPUT IJP</span> </button> <button type="button" class="nav-item w-full text-left px-4 py-3 rounded-lg mb-2" data-target="monitoring" style="background: none; border: none; cursor: pointer;"> <span style="font-size: 14px; color: #374151;">⏱️ MONITORING</span> </button> <button type="button" class="nav-item w-full text-left px-4 py-3 rounded-lg mb-2" data-target="repair" style="background: none; border: none; cursor: pointer;"> <span style="font-size: 14px; color: #374151;">🔧 REPAIR</span> </button> <button type="button" class="nav-item w-full text-left px-4 py-3 rounded-lg mb-2" data-target="switching" style="background: none; border: none; cursor: pointer;"> <span style="font-size: 14px; color: #374151;">🔄 SWITCHING</span> </button> <button type="button" class="nav-item w-full text-left px-4 py-3 rounded-lg mb-2" data-target="history" style="background: none; border: none; cursor: pointer;"> <span style="font-size: 14px; color: #374151;">📋 HISTORY</span> </button>
+    </nav>
+   </aside><!-- Main Content -->
+   <main class="flex-1 overflow-auto"><!-- Dashboard Section -->
+    <section id="dashboard" class="section active" style="padding: 32px;">
+     <h2 style="font-size: 28px; font-weight: 700; color: #1f2937; margin-bottom: 24px;">DASHBOARD</h2><!-- Filter Section -->
+     <div class="filter-section">
+      <h3 style="font-size: 16px; font-weight: 600; color: #1f2937; margin-bottom: 16px;">FILTER DATA</h3>
+      <div class="filter-grid">
+       <div><label for="filter-departemen" class="form-label" style="font-size: 12px;">DEPARTEMEN</label> <select id="filter-departemen" class="form-select"> <option value="">SEMUA DEPARTEMEN</option> </select>
+       </div>
+       <div><label for="filter-serial" class="form-label" style="font-size: 12px;">SERIAL NUMBER</label> <select id="filter-serial" class="form-select"> <option value="">SEMUA SERIAL</option> </select>
+       </div>
+       <div><label for="filter-mesin" class="form-label" style="font-size: 12px;">MESIN UTAMA</label> <select id="filter-mesin" class="form-select"> <option value="">SEMUA MESIN</option> </select>
+       </div>
+       <div><button type="button" id="btn-reset-filter" class="btn btn-primary" style="width: 100%;">RESET FILTER</button>
+       </div>
+      </div>
+     </div><!-- Status Stats -->
+     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 24px;">
+      <div class="stat-card" style="background-color: #ffffff; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+       <div style="font-size: 14px; color: #6b7280; margin-bottom: 8px;">
+        TOTAL IJP
+       </div>
+       <div id="stat-total" style="font-size: 36px; font-weight: 700; color: #1f2937;">
+        0
+       </div>
+      </div>
+      <div class="stat-card" style="background-color: #ffffff; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+       <div style="font-size: 14px; color: #6b7280; margin-bottom: 8px;">
+        IJP AKTIF
+       </div>
+       <div id="stat-aktif" style="font-size: 36px; font-weight: 700; color: #10b981;">
+        0
+       </div>
+      </div>
+      <div class="stat-card" style="background-color: #ffffff; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+       <div style="font-size: 14px; color: #6b7280; margin-bottom: 8px;">
+        IJP RUSAK
+       </div>
+       <div id="stat-rusak" style="font-size: 36px; font-weight: 700; color: #ef4444;">
+        0
+       </div>
+      </div>
+      <div class="stat-card" style="background-color: #ffffff; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+       <div style="font-size: 14px; color: #6b7280; margin-bottom: 8px;">
+        PERLU MAINTENANCE
+       </div>
+       <div id="stat-maintenance" style="font-size: 36px; font-weight: 700; color: #f59e0b;">
+        0
+       </div>
+      </div>
+     </div><!-- Type Stats -->
+     <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 32px;">
+      <h3 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px;">JUMLAH IJP PER TIPE</h3>
+      <div id="type-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;"><!-- Type stats will be dynamically generated -->
+      </div>
+     </div>
+     <div id="tables-by-department" style="display: flex; flex-direction: column; gap: 24px;"><!-- Tables will be dynamically generated here -->
+     </div>
+    </section><!-- Input IJP Section -->
+    <section id="input-ijp" class="section" style="padding: 32px;">
+     <h2 style="font-size: 28px; font-weight: 700; color: #1f2937; margin-bottom: 24px;">INPUT IJP BARU</h2>
+     <div style="background-color: #ffffff; padding: 32px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 600px;">
+      <form id="form-input-ijp">
+       <div class="form-group"><label for="input-departemen" class="form-label">DEPARTEMEN</label> <select id="input-departemen" class="form-select" required> <option value="">PILIH DEPARTEMEN</option> <option value="LINE 01A">LINE 01A</option> <option value="LINE 01B">LINE 01B</option> <option value="LINE 02">LINE 02</option> <option value="LINE 03">LINE 03</option> <option value="LINE 04">LINE 04</option> <option value="LINE 05">LINE 05</option> <option value="LINE 07">LINE 07</option> <option value="LINE 08">LINE 08</option> </select>
+       </div>
+       <div class="form-group"><label for="input-inisial-pic" class="form-label">INISIAL PIC</label> <input type="text" id="input-inisial-pic" class="form-input" required>
+       </div>
+       <div class="form-group"><label for="input-tipe-ijp" class="form-label">TIPE IJP</label> <input type="text" id="input-tipe-ijp" class="form-input" required>
+       </div>
+       <div class="form-group"><label for="input-lokasi" class="form-label">LOKASI</label> <input type="text" id="input-lokasi" class="form-input" required>
+       </div>
+       <div class="form-group"><label for="input-mesin-utama" class="form-label">MESIN UTAMA</label> <input type="text" id="input-mesin-utama" class="form-input" required>
+       </div>
+       <div class="form-group"><label for="input-serial-number" class="form-label">SERIAL NUMBER</label> <input type="text" id="input-serial-number" class="form-input" required>
+       </div><button type="submit" class="btn btn-primary w-full" id="btn-submit-input"> SIMPAN DATA IJP </button>
+      </form>
+     </div>
+    </section><!-- Monitoring Section -->
+    <section id="monitoring" class="section" style="padding: 32px;">
+     <h2 style="font-size: 28px; font-weight: 700; color: #1f2937; margin-bottom: 24px;">MONITORING JAM OPERASIONAL</h2>
+     <div style="background-color: #ffffff; padding: 32px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 600px;">
+      <form id="form-monitoring">
+       <div class="form-group"><label for="mon-inisial-pic" class="form-label">INISIAL PIC</label> <input type="text" id="mon-inisial-pic" class="form-input" required>
+       </div>
+       <div class="form-group"><label for="mon-serial-number" class="form-label">SERIAL NUMBER</label> <select id="mon-serial-number" class="form-select" required> <option value="">PILIH SERIAL NUMBER</option> </select>
+       </div>
+       <div class="form-group"><label class="form-label">JAM TERAKHIR</label>
+        <div id="mon-current-time" style="font-size: 24px; font-weight: 600; color: #3b82f6; padding: 12px; background-color: #eff6ff; border-radius: 6px; text-align: center;">
+         -
+        </div>
+       </div>
+       <div class="form-group"><label for="mon-additional-hours" class="form-label">TAMBAHAN JAM OPERASIONAL</label> <input type="number" id="mon-additional-hours" class="form-input" min="0" step="0.1" required>
+       </div>
+       <div class="form-group"><label class="form-label">TOTAL JAM (SETELAH UPDATE)</label>
+        <div id="mon-new-time" style="font-size: 24px; font-weight: 600; color: #10b981; padding: 12px; background-color: #f0fdf4; border-radius: 6px; text-align: center;">
+         -
+        </div>
+       </div><button type="submit" class="btn btn-primary w-full" id="btn-submit-monitoring"> UPDATE MONITORING </button>
+      </form>
+     </div>
+    </section><!-- Repair Section -->
+    <section id="repair" class="section" style="padding: 32px;">
+     <h2 style="font-size: 28px; font-weight: 700; color: #1f2937; margin-bottom: 24px;">REPAIR IJP</h2>
+     <div style="background-color: #ffffff; padding: 32px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 600px;">
+      <form id="form-repair">
+       <div class="form-group"><label for="repair-inisial-pic" class="form-label">INISIAL PIC</label> <input type="text" id="repair-inisial-pic" class="form-input" required>
+       </div>
+       <div class="form-group"><label for="repair-serial-number" class="form-label">SERIAL NUMBER</label> <select id="repair-serial-number" class="form-select" required> <option value="">PILIH SERIAL NUMBER</option> </select>
+       </div>
+       <div class="form-group"><label for="repair-kerusakan" class="form-label">KERUSAKAN</label> <textarea id="repair-kerusakan" class="form-input" rows="3" required></textarea>
+       </div>
+       <div class="form-group"><label for="repair-action" class="form-label">ACTION</label> <textarea id="repair-action" class="form-input" rows="3" required></textarea>
+       </div>
+       <div class="form-group"><label style="display: flex; align-items: center; cursor: pointer;"> <input type="checkbox" id="repair-ganti-filter" style="margin-right: 8px; width: 18px; height: 18px;"> <span class="form-label" style="margin-bottom: 0;">GANTI FILTER SET (RESET JAM KE 0)</span> </label>
+       </div><button type="submit" class="btn btn-primary w-full" id="btn-submit-repair"> SIMPAN REPAIR </button>
+      </form>
+     </div>
+    </section><!-- Switching Section -->
+    <section id="switching" class="section" style="padding: 32px;">
+     <h2 style="font-size: 28px; font-weight: 700; color: #1f2937; margin-bottom: 24px;">SWITCHING UNIT IJP</h2>
+     <div style="background-color: #ffffff; padding: 32px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 600px;">
+      <form id="form-switching">
+       <div class="form-group"><label for="switch-inisial-pic" class="form-label">INISIAL PIC</label> <input type="text" id="switch-inisial-pic" class="form-input" required>
+       </div>
+       <div class="form-group"><label for="switch-serial-diganti" class="form-label">SERIAL NUMBER YANG DIGANTI</label> <select id="switch-serial-diganti" class="form-select" required> <option value="">PILIH SERIAL NUMBER</option> </select>
+       </div>
+       <div class="form-group"><label for="switch-serial-pengganti" class="form-label">SERIAL NUMBER PENGGANTI</label> <select id="switch-serial-pengganti" class="form-select" required> <option value="">PILIH SERIAL NUMBER</option> </select>
+       </div>
+       <div class="form-group"><label for="switch-alasan" class="form-label">ALASAN PENGGANTIAN</label> <textarea id="switch-alasan" class="form-input" rows="3" required></textarea>
+       </div><button type="submit" class="btn btn-primary w-full" id="btn-submit-switching"> SIMPAN SWITCHING </button>
+      </form>
+     </div>
+    </section><!-- History Section -->
+    <section id="history" class="section" style="padding: 32px;">
+     <h2 style="font-size: 28px; font-weight: 700; color: #1f2937; margin-bottom: 24px;">HISTORY AKTIVITAS</h2><!-- Filter Section -->
+     <div class="filter-section">
+      <h3 style="font-size: 16px; font-weight: 600; color: #1f2937; margin-bottom: 16px;">FILTER HISTORY</h3>
+      <div class="filter-grid">
+       <div><label for="history-filter-tanggal-dari" class="form-label" style="font-size: 12px;">TANGGAL DARI</label> <input type="date" id="history-filter-tanggal-dari" class="form-input" style="text-transform: none;">
+       </div>
+       <div><label for="history-filter-tanggal-sampai" class="form-label" style="font-size: 12px;">TANGGAL SAMPAI</label> <input type="date" id="history-filter-tanggal-sampai" class="form-input" style="text-transform: none;">
+       </div>
+       <div><label for="history-filter-serial" class="form-label" style="font-size: 12px;">SERIAL NUMBER</label> <select id="history-filter-serial" class="form-select"> <option value="">SEMUA SERIAL</option> </select>
+       </div>
+       <div><label for="history-filter-mesin" class="form-label" style="font-size: 12px;">MESIN UTAMA</label> <select id="history-filter-mesin" class="form-select"> <option value="">SEMUA MESIN</option> </select>
+       </div>
+       <div><label for="history-filter-tipe" class="form-label" style="font-size: 12px;">TIPE AKTIVITAS</label> <select id="history-filter-tipe" class="form-select"> <option value="">SEMUA TIPE</option> <option value="INPUT">INPUT IJP</option> <option value="MONITORING">MONITORING</option> <option value="REPAIR">REPAIR</option> <option value="SWITCHING">SWITCHING</option> </select>
+       </div>
+       <div><button type="button" id="btn-reset-history-filter" class="btn btn-primary" style="width: 100%;">RESET FILTER</button>
+       </div>
+      </div>
+     </div><!-- History Table -->
+     <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <h3 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px;">LOG AKTIVITAS</h3>
+      <div id="history-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; padding: 16px; background-color: #f9fafb; border-radius: 8px;">
+       <div>
+        <div style="font-size: 12px; color: #6b7280;">
+         TOTAL AKTIVITAS
+        </div>
+        <div id="history-stat-total" style="font-size: 24px; font-weight: 700; color: #1f2937;">
+         0
+        </div>
+       </div>
+       <div>
+        <div style="font-size: 12px; color: #6b7280;">
+         INPUT
+        </div>
+        <div id="history-stat-input" style="font-size: 24px; font-weight: 700; color: #3b82f6;">
+         0
+        </div>
+       </div>
+       <div>
+        <div style="font-size: 12px; color: #6b7280;">
+         MONITORING
+        </div>
+        <div id="history-stat-monitoring" style="font-size: 24px; font-weight: 700; color: #10b981;">
+         0
+        </div>
+       </div>
+       <div>
+        <div style="font-size: 12px; color: #6b7280;">
+         REPAIR
+        </div>
+        <div id="history-stat-repair" style="font-size: 24px; font-weight: 700; color: #f59e0b;">
+         0
+        </div>
+       </div>
+       <div>
+        <div style="font-size: 12px; color: #6b7280;">
+         SWITCHING
+        </div>
+        <div id="history-stat-switching" style="font-size: 24px; font-weight: 700; color: #8b5cf6;">
+         0
+        </div>
+       </div>
+      </div>
+      <div class="table-container">
+       <table id="history-table">
+        <thead>
+         <tr>
+          <th>TANGGAL</th>
+          <th>TIPE</th>
+          <th>SERIAL NUMBER</th>
+          <th>MESIN UTAMA</th>
+          <th>PIC</th>
+          <th>DETAIL</th>
+         </tr>
+        </thead>
+        <tbody>
+         <tr>
+          <td colspan="6" style="text-align: center; color: #6b7280;">MEMUAT DATA...</td>
+         </tr>
+        </tbody>
+       </table>
+      </div>
+     </div>
+    </section>
+   </main>
+  </div>
+  <script>
+    // Supabase Configuration
+    const SUPABASE_URL = 'https://acccajnnbfuhcxmdxykr.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjY2Nham5uYmZ1aGN4bWR4eWtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwMTI0NTksImV4cCI6MjA4MTU4ODQ1OX0.TSjgILLhaT3L2wmGaO_0kuFAc-y3AvQeDGh_q_wM2dA';
+    
+    let supabase;
+    let isSupabaseReady = false;
+    let allIjpData = [];
+    let allHistoryData = [];
+    let filterCache = { departemen: new Set(), serial: new Set(), mesin: new Set() };
+    let historyFilterCache = { serial: new Set(), mesin: new Set() };
+    
+    // Initialize Supabase
+    function initSupabase() {
+      try {
+        if (!window.supabase) {
+          showToast('SUPABASE SDK GAGAL DIMUAT', 'error');
+          return false;
+        }
+        
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        isSupabaseReady = true;
+        return true;
+      } catch (error) {
+        showToast('ERROR INISIALISASI SUPABASE: ' + error.message, 'error');
+        return false;
+      }
+    }
+    
+    // Toast Notification
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message.toUpperCase();
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.remove();
+      }, 4000);
+    }
+    
+    // Mobile Menu
+    function initMobileMenu() {
+      const menuBtn = document.getElementById('mobile-menu-btn');
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('mobile-overlay');
+      
+      if (menuBtn) {
+        menuBtn.addEventListener('click', () => {
+          sidebar.classList.add('open');
+          overlay.classList.add('show');
+        });
+      }
+      
+      if (overlay) {
+        overlay.addEventListener('click', () => {
+          sidebar.classList.remove('open');
+          overlay.classList.remove('show');
+        });
+      }
+    }
+    
+    // Navigation
+    function initNavigation() {
+      const navItems = document.querySelectorAll('.nav-item');
+      const sections = document.querySelectorAll('.section');
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('mobile-overlay');
+      
+      navItems.forEach(item => {
+        item.addEventListener('click', () => {
+          const target = item.getAttribute('data-target');
+          
+          navItems.forEach(nav => nav.classList.remove('active'));
+          item.classList.add('active');
+          
+          sections.forEach(section => section.classList.remove('active'));
+          const targetSection = document.getElementById(target);
+          if (targetSection) {
+            targetSection.classList.add('active');
+          }
+          
+          // Close mobile menu after navigation
+          if (window.innerWidth <= 768) {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('show');
+          }
+        });
+      });
+    }
+    
+    // Sort function - handles both strings and numbers
+    function sortAlphanumeric(a, b) {
+      return a.toString().localeCompare(b.toString(), 'en', { numeric: true, sensitivity: 'base' });
+    }
+    
+    // Load Dashboard Data
+    async function loadDashboard() {
+      if (!isSupabaseReady) {
+        showToast('DATABASE BELUM SIAP', 'error');
+        return;
+      }
+      
+      try {
+        const { data, error } = await supabase
+          .from('ijp_master')
+          .select('*')
+          .order('serial_number', { ascending: true });
+        
+        if (error) throw error;
+        
+        allIjpData = data || [];
+        
+        updateFilterOptions();
+        applyFilters();
+        updateStats();
+      } catch (error) {
+        showToast('ERROR MEMUAT DASHBOARD: ' + error.message, 'error');
+      }
+    }
+    
+    // Update filter options
+    function updateFilterOptions() {
+      filterCache.departemen.clear();
+      filterCache.serial.clear();
+      filterCache.mesin.clear();
+      
+      allIjpData.forEach(ijp => {
+        if (ijp.departemen) filterCache.departemen.add(ijp.departemen);
+        if (ijp.serial_number) filterCache.serial.add(ijp.serial_number);
+        if (ijp.mesin_utama) filterCache.mesin.add(ijp.mesin_utama);
+      });
+      
+      const departemenSelect = document.getElementById('filter-departemen');
+      const serialSelect = document.getElementById('filter-serial');
+      const mesinSelect = document.getElementById('filter-mesin');
+      
+      const sortedDepartemen = Array.from(filterCache.departemen).sort(sortAlphanumeric);
+      const sortedSerial = Array.from(filterCache.serial).sort(sortAlphanumeric);
+      const sortedMesin = Array.from(filterCache.mesin).sort(sortAlphanumeric);
+      
+      departemenSelect.innerHTML = '<option value="">SEMUA DEPARTEMEN</option>' + 
+        sortedDepartemen.map(d => `<option value="${d}">${d}</option>`).join('');
+      
+      serialSelect.innerHTML = '<option value="">SEMUA SERIAL</option>' + 
+        sortedSerial.map(s => `<option value="${s}">${s}</option>`).join('');
+      
+      mesinSelect.innerHTML = '<option value="">SEMUA MESIN</option>' + 
+        sortedMesin.map(m => `<option value="${m}">${m}</option>`).join('');
+    }
+    
+    // Apply filters and update table
+    function applyFilters() {
+      const filterDepartemen = document.getElementById('filter-departemen').value;
+      const filterSerial = document.getElementById('filter-serial').value;
+      const filterMesin = document.getElementById('filter-mesin').value;
+      
+      let filteredData = allIjpData;
+      
+      if (filterDepartemen) {
+        filteredData = filteredData.filter(ijp => ijp.departemen === filterDepartemen);
+      }
+      if (filterSerial) {
+        filteredData = filteredData.filter(ijp => ijp.serial_number === filterSerial);
+      }
+      if (filterMesin) {
+        filteredData = filteredData.filter(ijp => ijp.mesin_utama === filterMesin);
+      }
+      
+      renderTable(filteredData);
+    }
+    
+    // Render tables by department
+    function renderTable(data) {
+      const container = document.getElementById('tables-by-department');
+      
+      if (data.length === 0) {
+        container.innerHTML = '<div style="background-color: #ffffff; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center; color: #6b7280;">TIDAK ADA DATA</div>';
+        return;
+      }
+      
+      // Group data by department
+      const groupedData = {};
+      data.forEach(ijp => {
+        if (!groupedData[ijp.departemen]) {
+          groupedData[ijp.departemen] = [];
+        }
+        groupedData[ijp.departemen].push(ijp);
+      });
+      
+      // Sort departments
+      const sortedDepartments = Object.keys(groupedData).sort(sortAlphanumeric);
+      
+      // Generate table for each department
+      container.innerHTML = sortedDepartments.map(dept => {
+        const deptData = groupedData[dept];
+        const rows = deptData.map(ijp => {
+          const needsMaintenance = ijp.cummulative_time > 9500;
+          const rowClass = needsMaintenance ? 'maintenance-warning' : '';
+          return `
+            <tr class="${rowClass}">
+              <td>${ijp.serial_number}</td>
+              <td>${ijp.lokasi}</td>
+              <td>${ijp.tipe_ijp}</td>
+              <td>${ijp.mesin_utama}</td>
+              <td>${ijp.cummulative_time.toFixed(1)}</td>
+              <td><span class="status-badge status-${ijp.status.toLowerCase()}">${ijp.status}</span></td>
+            </tr>
+          `;
+        }).join('');
+        
+        return `
+          <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <h3 style="font-size: 18px; font-weight: 600; color: #1f2937;">${dept}</h3>
+              <span style="background-color: #eff6ff; color: #3b82f6; padding: 4px 12px; border-radius: 12px; font-size: 14px; font-weight: 600;">${deptData.length} UNIT</span>
+            </div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>SERIAL NUMBER</th>
+                    <th>LOKASI</th>
+                    <th>TIPE IJP</th>
+                    <th>MESIN UTAMA</th>
+                    <th>CUMMULATIVE TIME</th>
+                    <th>STATUS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rows}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    // Update statistics
+    function updateStats() {
+      const total = allIjpData.length;
+      const aktif = allIjpData.filter(ijp => ijp.status === 'AKTIF').length;
+      const rusak = allIjpData.filter(ijp => ijp.status === 'RUSAK').length;
+      const maintenance = allIjpData.filter(ijp => ijp.cummulative_time > 9500).length;
+      
+      document.getElementById('stat-total').textContent = total;
+      document.getElementById('stat-aktif').textContent = aktif;
+      document.getElementById('stat-rusak').textContent = rusak;
+      document.getElementById('stat-maintenance').textContent = maintenance;
+      
+      // Update type statistics
+      const typeStats = {};
+      allIjpData.forEach(ijp => {
+        if (ijp.tipe_ijp) {
+          typeStats[ijp.tipe_ijp] = (typeStats[ijp.tipe_ijp] || 0) + 1;
+        }
+      });
+      
+      const sortedTypes = Object.keys(typeStats).sort(sortAlphanumeric);
+      const typeStatsContainer = document.getElementById('type-stats');
+      
+      if (sortedTypes.length === 0) {
+        typeStatsContainer.innerHTML = '<div style="text-align: center; color: #6b7280; grid-column: 1 / -1;">TIDAK ADA DATA</div>';
+      } else {
+        typeStatsContainer.innerHTML = sortedTypes.map(type => `
+          <div style="padding: 16px; background-color: #f9fafb; border-radius: 8px; border-left: 4px solid #3b82f6;">
+            <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">${type}</div>
+            <div style="font-size: 28px; font-weight: 700; color: #1f2937;">${typeStats[type]}</div>
+          </div>
+        `).join('');
+      }
+    }
+    
+    // Filter event listeners
+    document.getElementById('filter-departemen').addEventListener('change', applyFilters);
+    document.getElementById('filter-serial').addEventListener('change', applyFilters);
+    document.getElementById('filter-mesin').addEventListener('change', applyFilters);
+    
+    document.getElementById('btn-reset-filter').addEventListener('click', () => {
+      document.getElementById('filter-departemen').value = '';
+      document.getElementById('filter-serial').value = '';
+      document.getElementById('filter-mesin').value = '';
+      applyFilters();
+    });
+    
+    // Load History Data
+    async function loadHistory() {
+      if (!isSupabaseReady) {
+        showToast('DATABASE BELUM SIAP', 'error');
+        return;
+      }
+      
+      try {
+        // Get all monitoring logs
+        const { data: monitoringData, error: monError } = await supabase
+          .from('monitoring_log')
+          .select('*, ijp_master!inner(mesin_utama)')
+          .order('created_at', { ascending: false });
+        
+        if (monError) throw monError;
+        
+        // Get all repair logs
+        const { data: repairData, error: repError } = await supabase
+          .from('repair_log')
+          .select('*, ijp_master!inner(mesin_utama)')
+          .order('created_at', { ascending: false });
+        
+        if (repError) throw repError;
+        
+        // Get all switching logs
+        const { data: switchingData, error: switchError } = await supabase
+          .from('switching_log')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (switchError) throw switchError;
+        
+        // Get mesin_utama for switching logs
+        const switchingWithMesin = await Promise.all(
+          (switchingData || []).map(async (log) => {
+            const { data: ijpData } = await supabase
+              .from('ijp_master')
+              .select('mesin_utama')
+              .eq('serial_number', log.serial_diganti)
+              .single();
+            return { ...log, mesin_utama: ijpData?.mesin_utama || '-' };
+          })
+        );
+        
+        // Combine all logs
+        const monLogs = (monitoringData || []).map(log => ({
+          tanggal: log.created_at,
+          tipe: 'MONITORING',
+          serial_number: log.serial_number,
+          mesin_utama: log.ijp_master?.mesin_utama || '-',
+          pic: log.inisial_pic,
+          detail: `UPDATE JAM: ${log.cummulative_time.toFixed(1)} JAM`
+        }));
+        
+        const repLogs = (repairData || []).map(log => ({
+          tanggal: log.created_at,
+          tipe: 'REPAIR',
+          serial_number: log.serial_number,
+          mesin_utama: log.ijp_master?.mesin_utama || '-',
+          pic: log.inisial_pic,
+          detail: `${log.kerusakan} | ACTION: ${log.action}${log.ganti_filter_set ? ' | GANTI FILTER' : ''}`
+        }));
+        
+        const switchLogs = switchingWithMesin.map(log => ({
+          tanggal: log.created_at,
+          tipe: 'SWITCHING',
+          serial_number: log.serial_diganti,
+          mesin_utama: log.mesin_utama,
+          pic: log.inisial_pic,
+          detail: `DIGANTI: ${log.serial_diganti} → PENGGANTI: ${log.serial_pengganti} | ${log.alasan_penggantian}`
+        }));
+        
+        // Get input history from ijp_master
+        const { data: inputData, error: inputError } = await supabase
+          .from('ijp_master')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (inputError) throw inputError;
+        
+        const inputLogs = (inputData || []).map(log => ({
+          tanggal: log.created_at,
+          tipe: 'INPUT',
+          serial_number: log.serial_number,
+          mesin_utama: log.mesin_utama,
+          pic: log.inisial_pic,
+          detail: `INPUT BARU: ${log.departemen} | ${log.tipe_ijp} | ${log.lokasi}`
+        }));
+        
+        // Combine and sort all logs
+        allHistoryData = [...monLogs, ...repLogs, ...switchLogs, ...inputLogs]
+          .sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+        
+        updateHistoryFilterOptions();
+        applyHistoryFilters();
+      } catch (error) {
+        showToast('ERROR MEMUAT HISTORY: ' + error.message, 'error');
+        console.error('History load error:', error);
+      }
+    }
+    
+    // Update history filter options
+    function updateHistoryFilterOptions() {
+      historyFilterCache.serial.clear();
+      historyFilterCache.mesin.clear();
+      
+      allHistoryData.forEach(log => {
+        if (log.serial_number) historyFilterCache.serial.add(log.serial_number);
+        if (log.mesin_utama) historyFilterCache.mesin.add(log.mesin_utama);
+      });
+      
+      const serialSelect = document.getElementById('history-filter-serial');
+      const mesinSelect = document.getElementById('history-filter-mesin');
+      
+      const sortedSerial = Array.from(historyFilterCache.serial).sort(sortAlphanumeric);
+      const sortedMesin = Array.from(historyFilterCache.mesin).sort(sortAlphanumeric);
+      
+      serialSelect.innerHTML = '<option value="">SEMUA SERIAL</option>' + 
+        sortedSerial.map(s => `<option value="${s}">${s}</option>`).join('');
+      
+      mesinSelect.innerHTML = '<option value="">SEMUA MESIN</option>' + 
+        sortedMesin.map(m => `<option value="${m}">${m}</option>`).join('');
+    }
+    
+    // Apply history filters
+    function applyHistoryFilters() {
+      const filterTanggalDari = document.getElementById('history-filter-tanggal-dari').value;
+      const filterTanggalSampai = document.getElementById('history-filter-tanggal-sampai').value;
+      const filterSerial = document.getElementById('history-filter-serial').value;
+      const filterMesin = document.getElementById('history-filter-mesin').value;
+      const filterTipe = document.getElementById('history-filter-tipe').value;
+      
+      let filteredData = allHistoryData;
+      
+      if (filterTanggalDari) {
+        const dateFrom = new Date(filterTanggalDari);
+        dateFrom.setHours(0, 0, 0, 0);
+        filteredData = filteredData.filter(log => new Date(log.tanggal) >= dateFrom);
+      }
+      
+      if (filterTanggalSampai) {
+        const dateTo = new Date(filterTanggalSampai);
+        dateTo.setHours(23, 59, 59, 999);
+        filteredData = filteredData.filter(log => new Date(log.tanggal) <= dateTo);
+      }
+      
+      if (filterSerial) {
+        filteredData = filteredData.filter(log => log.serial_number === filterSerial);
+      }
+      
+      if (filterMesin) {
+        filteredData = filteredData.filter(log => log.mesin_utama === filterMesin);
+      }
+      
+      if (filterTipe) {
+        filteredData = filteredData.filter(log => log.tipe === filterTipe);
+      }
+      
+      renderHistoryTable(filteredData);
+      updateHistoryStats(filteredData);
+    }
+    
+    // Render history table
+    function renderHistoryTable(data) {
+      const tbody = document.querySelector('#history-table tbody');
+      
+      if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #6b7280;">TIDAK ADA DATA</td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = data.map(log => {
+        const date = new Date(log.tanggal);
+        const formattedDate = date.toLocaleDateString('id-ID', { 
+          day: '2-digit', 
+          month: '2-digit', 
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        
+        let badgeColor = '#3b82f6';
+        if (log.tipe === 'MONITORING') badgeColor = '#10b981';
+        if (log.tipe === 'REPAIR') badgeColor = '#f59e0b';
+        if (log.tipe === 'SWITCHING') badgeColor = '#8b5cf6';
+        
+        return `
+          <tr>
+            <td style="text-transform: none;">${formattedDate}</td>
+            <td><span class="status-badge" style="background-color: ${badgeColor}20; color: ${badgeColor};">${log.tipe}</span></td>
+            <td>${log.serial_number}</td>
+            <td>${log.mesin_utama}</td>
+            <td>${log.pic}</td>
+            <td style="font-size: 12px;">${log.detail}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+    
+    // Update history statistics
+    function updateHistoryStats(data) {
+      const total = data.length;
+      const input = data.filter(log => log.tipe === 'INPUT').length;
+      const monitoring = data.filter(log => log.tipe === 'MONITORING').length;
+      const repair = data.filter(log => log.tipe === 'REPAIR').length;
+      const switching = data.filter(log => log.tipe === 'SWITCHING').length;
+      
+      document.getElementById('history-stat-total').textContent = total;
+      document.getElementById('history-stat-input').textContent = input;
+      document.getElementById('history-stat-monitoring').textContent = monitoring;
+      document.getElementById('history-stat-repair').textContent = repair;
+      document.getElementById('history-stat-switching').textContent = switching;
+    }
+    
+    // History filter event listeners
+    document.getElementById('history-filter-tanggal-dari').addEventListener('change', applyHistoryFilters);
+    document.getElementById('history-filter-tanggal-sampai').addEventListener('change', applyHistoryFilters);
+    document.getElementById('history-filter-serial').addEventListener('change', applyHistoryFilters);
+    document.getElementById('history-filter-mesin').addEventListener('change', applyHistoryFilters);
+    document.getElementById('history-filter-tipe').addEventListener('change', applyHistoryFilters);
+    
+    document.getElementById('btn-reset-history-filter').addEventListener('click', () => {
+      document.getElementById('history-filter-tanggal-dari').value = '';
+      document.getElementById('history-filter-tanggal-sampai').value = '';
+      document.getElementById('history-filter-serial').value = '';
+      document.getElementById('history-filter-mesin').value = '';
+      document.getElementById('history-filter-tipe').value = '';
+      applyHistoryFilters();
+    });
+    
+    // Load Serial Numbers for Dropdowns (sorted)
+    async function loadSerialNumbers() {
+      if (!isSupabaseReady) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('ijp_master')
+          .select('serial_number, status')
+          .order('serial_number', { ascending: true });
+        
+        if (error) throw error;
+        
+        const sortedData = (data || []).sort((a, b) => sortAlphanumeric(a.serial_number, b.serial_number));
+        
+        const monSelect = document.getElementById('mon-serial-number');
+        const repairSelect = document.getElementById('repair-serial-number');
+        const switchDigantiSelect = document.getElementById('switch-serial-diganti');
+        const switchPenggantiSelect = document.getElementById('switch-serial-pengganti');
+        
+        const options = sortedData.map(ijp => 
+          `<option value="${ijp.serial_number}">${ijp.serial_number} (${ijp.status})</option>`
+        ).join('');
+        
+        monSelect.innerHTML = '<option value="">PILIH SERIAL NUMBER</option>' + options;
+        repairSelect.innerHTML = '<option value="">PILIH SERIAL NUMBER</option>' + options;
+        switchDigantiSelect.innerHTML = '<option value="">PILIH SERIAL NUMBER</option>' + options;
+        switchPenggantiSelect.innerHTML = '<option value="">PILIH SERIAL NUMBER</option>' + options;
+      } catch (error) {
+        showToast('ERROR MEMUAT SERIAL NUMBERS: ' + error.message, 'error');
+      }
+    }
+    
+    // Form: Input IJP with duplicate check
+    document.getElementById('form-input-ijp').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      if (!isSupabaseReady) {
+        showToast('DATABASE BELUM SIAP', 'error');
+        return;
+      }
+      
+      const btn = document.getElementById('btn-submit-input');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span> MENYIMPAN...';
+      
+      try {
+        const serialNumber = document.getElementById('input-serial-number').value.trim().toUpperCase();
+        
+        // Check for duplicate serial number
+        const { data: existingData, error: checkError } = await supabase
+          .from('ijp_master')
+          .select('serial_number')
+          .eq('serial_number', serialNumber)
+          .maybeSingle();
+        
+        if (checkError) throw checkError;
+        
+        if (existingData) {
+          showToast('SERIAL NUMBER SUDAH TERDAFTAR! GUNAKAN NOMOR LAIN.', 'error');
+          return;
+        }
+        
+        const formData = {
+          departemen: document.getElementById('input-departemen').value,
+          inisial_pic: document.getElementById('input-inisial-pic').value.trim().toUpperCase(),
+          tipe_ijp: document.getElementById('input-tipe-ijp').value.trim().toUpperCase(),
+          lokasi: document.getElementById('input-lokasi').value.trim().toUpperCase(),
+          mesin_utama: document.getElementById('input-mesin-utama').value.trim().toUpperCase(),
+          serial_number: serialNumber,
+          cummulative_time: 0,
+          status: 'AKTIF'
+        };
+        
+        const { error } = await supabase
+          .from('ijp_master')
+          .insert([formData]);
+        
+        if (error) throw error;
+        
+        showToast('DATA IJP BERHASIL DISIMPAN', 'success');
+        e.target.reset();
+        await loadDashboard();
+        await loadSerialNumbers();
+        await loadHistory();
+      } catch (error) {
+        showToast('ERROR MENYIMPAN DATA: ' + error.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'SIMPAN DATA IJP';
+      }
+    });
+    
+    // Monitoring: Show Current Time
+    document.getElementById('mon-serial-number').addEventListener('change', async (e) => {
+      const serialNumber = e.target.value;
+      
+      if (!serialNumber || !isSupabaseReady) {
+        document.getElementById('mon-current-time').textContent = '-';
+        document.getElementById('mon-new-time').textContent = '-';
+        return;
+      }
+      
+      try {
+        const { data, error } = await supabase
+          .from('ijp_master')
+          .select('cummulative_time')
+          .eq('serial_number', serialNumber)
+          .single();
+        
+        if (error) throw error;
+        
+        document.getElementById('mon-current-time').textContent = data.cummulative_time.toFixed(1) + ' JAM';
+        
+        const additionalHours = parseFloat(document.getElementById('mon-additional-hours').value) || 0;
+        if (additionalHours > 0) {
+          const newTime = data.cummulative_time + additionalHours;
+          document.getElementById('mon-new-time').textContent = newTime.toFixed(1) + ' JAM';
+        }
+      } catch (error) {
+        showToast('ERROR MEMUAT DATA: ' + error.message, 'error');
+      }
+    });
+    
+    // Monitoring: Calculate New Time
+    document.getElementById('mon-additional-hours').addEventListener('input', () => {
+      const currentTimeText = document.getElementById('mon-current-time').textContent;
+      const additionalHours = parseFloat(document.getElementById('mon-additional-hours').value) || 0;
+      
+      if (currentTimeText === '-' || additionalHours <= 0) {
+        document.getElementById('mon-new-time').textContent = '-';
+        return;
+      }
+      
+      const currentTime = parseFloat(currentTimeText);
+      const newTime = currentTime + additionalHours;
+      document.getElementById('mon-new-time').textContent = newTime.toFixed(1) + ' JAM';
+    });
+    
+    // Form: Monitoring
+    document.getElementById('form-monitoring').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      if (!isSupabaseReady) {
+        showToast('DATABASE BELUM SIAP', 'error');
+        return;
+      }
+      
+      const btn = document.getElementById('btn-submit-monitoring');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span> MENYIMPAN...';
+      
+      try {
+        const serialNumber = document.getElementById('mon-serial-number').value;
+        const additionalHours = parseFloat(document.getElementById('mon-additional-hours').value);
+        const inisialPic = document.getElementById('mon-inisial-pic').value.trim().toUpperCase();
+        
+        if (additionalHours <= 0) {
+          showToast('TAMBAHAN JAM HARUS LEBIH DARI 0', 'error');
+          return;
+        }
+        
+        const { data: ijpData, error: fetchError } = await supabase
+          .from('ijp_master')
+          .select('cummulative_time')
+          .eq('serial_number', serialNumber)
+          .single();
+        
+        if (fetchError) throw fetchError;
+        
+        const newCummulativeTime = ijpData.cummulative_time + additionalHours;
+        
+        const { error: updateError } = await supabase
+          .from('ijp_master')
+          .update({ cummulative_time: newCummulativeTime })
+          .eq('serial_number', serialNumber);
+        
+        if (updateError) throw updateError;
+        
+        const { error: logError } = await supabase
+          .from('monitoring_log')
+          .insert([{
+            inisial_pic: inisialPic,
+            serial_number: serialNumber,
+            cummulative_time: newCummulativeTime
+          }]);
+        
+        if (logError) throw logError;
+        
+        showToast('MONITORING BERHASIL DIUPDATE', 'success');
+        e.target.reset();
+        document.getElementById('mon-current-time').textContent = '-';
+        document.getElementById('mon-new-time').textContent = '-';
+        await loadDashboard();
+        await loadHistory();
+      } catch (error) {
+        showToast('ERROR MENYIMPAN MONITORING: ' + error.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'UPDATE MONITORING';
+      }
+    });
+    
+    // Form: Repair
+    document.getElementById('form-repair').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      if (!isSupabaseReady) {
+        showToast('DATABASE BELUM SIAP', 'error');
+        return;
+      }
+      
+      const btn = document.getElementById('btn-submit-repair');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span> MENYIMPAN...';
+      
+      try {
+        const serialNumber = document.getElementById('repair-serial-number').value;
+        const gantiFilter = document.getElementById('repair-ganti-filter').checked;
+        
+        const repairData = {
+          inisial_pic: document.getElementById('repair-inisial-pic').value.trim().toUpperCase(),
+          serial_number: serialNumber,
+          kerusakan: document.getElementById('repair-kerusakan').value.trim().toUpperCase(),
+          action: document.getElementById('repair-action').value.trim().toUpperCase(),
+          ganti_filter_set: gantiFilter
+        };
+        
+        const { error: logError } = await supabase
+          .from('repair_log')
+          .insert([repairData]);
+        
+        if (logError) throw logError;
+        
+        if (gantiFilter) {
+          const { error: updateError } = await supabase
+            .from('ijp_master')
+            .update({ cummulative_time: 0 })
+            .eq('serial_number', serialNumber);
+          
+          if (updateError) throw updateError;
+        }
+        
+        showToast('DATA REPAIR BERHASIL DISIMPAN', 'success');
+        e.target.reset();
+        await loadDashboard();
+        await loadHistory();
+      } catch (error) {
+        showToast('ERROR MENYIMPAN REPAIR: ' + error.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'SIMPAN REPAIR';
+      }
+    });
+    
+    // Form: Switching
+    document.getElementById('form-switching').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      if (!isSupabaseReady) {
+        showToast('DATABASE BELUM SIAP', 'error');
+        return;
+      }
+      
+      const btn = document.getElementById('btn-submit-switching');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span> MENYIMPAN...';
+      
+      try {
+        const serialDiganti = document.getElementById('switch-serial-diganti').value;
+        const serialPengganti = document.getElementById('switch-serial-pengganti').value;
+        const alasan = document.getElementById('switch-alasan').value.trim().toUpperCase();
+        
+        if (serialDiganti === serialPengganti) {
+          showToast('SERIAL NUMBER YANG DIGANTI DAN PENGGANTI TIDAK BOLEH SAMA', 'error');
+          return;
+        }
+        
+        const switchingData = {
+          inisial_pic: document.getElementById('switch-inisial-pic').value.trim().toUpperCase(),
+          serial_diganti: serialDiganti,
+          serial_pengganti: serialPengganti,
+          alasan_penggantian: alasan
+        };
+        
+        const { error: logError } = await supabase
+          .from('switching_log')
+          .insert([switchingData]);
+        
+        if (logError) throw logError;
+        
+        if (alasan.toLowerCase().includes('rusak')) {
+          const { error: updateError } = await supabase
+            .from('ijp_master')
+            .update({ status: 'RUSAK' })
+            .eq('serial_number', serialDiganti);
+          
+          if (updateError) throw updateError;
+        }
+        
+        showToast('DATA SWITCHING BERHASIL DISIMPAN', 'success');
+        e.target.reset();
+        await loadDashboard();
+        await loadSerialNumbers();
+        await loadHistory();
+      } catch (error) {
+        showToast('ERROR MENYIMPAN SWITCHING: ' + error.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'SIMPAN SWITCHING';
+      }
+    });
+    
+    // Element SDK Implementation
+    const defaultConfig = {
+      app_title: 'SISTEM MONITORING IJP',
+      company_name: 'PT. CONTOH',
+      primary_color: '#3b82f6',
+      secondary_color: '#10b981',
+      danger_color: '#ef4444',
+      warning_color: '#f59e0b',
+      background_color: '#f3f4f6'
+    };
+    
+    async function onConfigChange(config) {
+      document.getElementById('app-title').textContent = (config.app_title || defaultConfig.app_title).toUpperCase();
+      document.getElementById('company-name').textContent = (config.company_name || defaultConfig.company_name).toUpperCase();
+      
+      const primaryColor = config.primary_color || defaultConfig.primary_color;
+      const secondaryColor = config.secondary_color || defaultConfig.secondary_color;
+      const dangerColor = config.danger_color || defaultConfig.danger_color;
+      const warningColor = config.warning_color || defaultConfig.warning_color;
+      const backgroundColor = config.background_color || defaultConfig.background_color;
+      
+      const mainContainer = document.querySelector('.flex.h-full');
+      if (mainContainer) {
+        mainContainer.style.backgroundColor = backgroundColor;
+      }
+      
+      const existingStyle = document.getElementById('dynamic-style');
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+      
+      const style = document.createElement('style');
+      style.id = 'dynamic-style';
+      style.textContent = `
+        .btn-primary { background-color: ${primaryColor} !important; }
+        .btn-primary:hover { background-color: ${primaryColor}dd !important; }
+        #stat-aktif { color: ${secondaryColor} !important; }
+        #stat-rusak { color: ${dangerColor} !important; }
+        #stat-maintenance { color: ${warningColor} !important; }
+        #mon-new-time { color: ${secondaryColor} !important; }
+        #mon-current-time { color: ${primaryColor} !important; }
+        .nav-item.active { border-left-color: ${primaryColor} !important; }
+      `;
+      document.head.appendChild(style);
+    }
+    
+    function mapToCapabilities(config) {
+      return {
+        recolorables: [
+          {
+            get: () => config.primary_color || defaultConfig.primary_color,
+            set: (value) => {
+              if (window.elementSdk) {
+                window.elementSdk.setConfig({ primary_color: value });
+              }
+            }
+          },
+          {
+            get: () => config.secondary_color || defaultConfig.secondary_color,
+            set: (value) => {
+              if (window.elementSdk) {
+                window.elementSdk.setConfig({ secondary_color: value });
+              }
+            }
+          },
+          {
+            get: () => config.danger_color || defaultConfig.danger_color,
+            set: (value) => {
+              if (window.elementSdk) {
+                window.elementSdk.setConfig({ danger_color: value });
+              }
+            }
+          },
+          {
+            get: () => config.warning_color || defaultConfig.warning_color,
+            set: (value) => {
+              if (window.elementSdk) {
+                window.elementSdk.setConfig({ warning_color: value });
+              }
+            }
+          },
+          {
+            get: () => config.background_color || defaultConfig.background_color,
+            set: (value) => {
+              if (window.elementSdk) {
+                window.elementSdk.setConfig({ background_color: value });
+              }
+            }
+          }
+        ],
+        borderables: [],
+        fontEditable: undefined,
+        fontSizeable: undefined
+      };
+    }
+    
+    function mapToEditPanelValues(config) {
+      return new Map([
+        ['app_title', (config.app_title || defaultConfig.app_title).toUpperCase()],
+        ['company_name', (config.company_name || defaultConfig.company_name).toUpperCase()]
+      ]);
+    }
+    
+    // Initialize Application
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (window.elementSdk) {
+        window.elementSdk.init({
+          defaultConfig,
+          onConfigChange,
+          mapToCapabilities,
+          mapToEditPanelValues
+        });
+      }
+      
+      const supabaseInitialized = initSupabase();
+      
+      if (!supabaseInitialized) {
+        showToast('⚠️ KONFIGURASI SUPABASE DIPERLUKAN. SILAKAN UPDATE SUPABASE_URL DAN SUPABASE_ANON_KEY DI KODE.', 'error');
+        return;
+      }
+      
+      initMobileMenu();
+      initNavigation();
+      await loadDashboard();
+      await loadSerialNumbers();
+      await loadHistory();
+      
+      showToast('SISTEM MONITORING SIAP DIGUNAKAN', 'success');
+    });
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9afb7e4ce2c17a69',t:'MTc2NjAyNzcwMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
