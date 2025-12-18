@@ -309,7 +309,7 @@
  </head>
  <body class="h-full w-full overflow-auto"><!-- Mobile Overlay -->
   <div class="mobile-overlay" id="mobile-overlay"></div><!-- Mobile Header -->
-  <div class="mobile-header"><button type="button" class="mobile-menu-btn" id="mobile-menu-btn">☰</button>
+  <div class="mobile-header"><button type="button" class="mobile-menu-btn" id="mobile-menu-btn">����</button>
    <h1 style="font-size: 16px; font-weight: 700; color: #1f2937;">SISTEM MONITORING IJP</h1>
    <div style="width: 32px;"></div>
   </div>
@@ -317,9 +317,9 @@
    <aside class="mobile-sidebar desktop-sidebar" id="sidebar" style="width: 250px; background-color: #ffffff; border-right: 1px solid #e5e7eb;">
     <div style="padding: 24px; border-bottom: 1px solid #e5e7eb;">
      <h1 id="app-title" style="font-size: 20px; font-weight: 700; color: #1f2937;">SISTEM MONITORING IJP</h1>
-     <p id="company-name" style="font-size: 14px; color: #6b7280; margin-top: 4px;">PT. DANKOS FARMA</p>
+     <p id="company-name" style="font-size: 14px; color: #6b7280; margin-top: 4px;">PT. CONTOH</p>
     </div>
-    <nav style="padding: 16px;"><button type="button" class="nav-item active w-full text-left px-4 py-3 rounded-lg mb-2" data-target="dashboard" style="background: none; border: none; cursor: pointer;"> <span style="font-size: 14px; color: #374151;">📊 DASHBOARD</span> </button> <button type="button" class="nav-item w-full text-left px-4 py-3 rounded-lg mb-2" data-target="input-ijp" style="background: none; border: none; cursor: pointer;"> <span style="font-size: 14px; color: #374151;">➕ INPUT IJP</span> </button> <button type="button" class="nav-item w-full text-left px-4 py-3 rounded-lg mb-2" data-target="monitoring" style="background: none; border: none; cursor: pointer;"> <span style="font-size: 14px; color: #374151;">⏱️ MONITORING</span> </button> <button type="button" class="nav-item w-full text-left px-4 py-3 rounded-lg mb-2" data-target="repair" style="background: none; border: none; cursor: pointer;"> <span style="font-size: 14px; color: #374151;">🔧 REPAIR</span> </button> <button type="button" class="nav-item w-full text-left px-4 py-3 rounded-lg mb-2" data-target="switching" style="background: none; border: none; cursor: pointer;"> <span style="font-size: 14px; color: #374151;">🔄 SWITCHING</span> </button> <button type="button" class="nav-item w-full text-left px-4 py-3 rounded-lg mb-2" data-target="history" style="background: none; border: none; cursor: pointer;"> <span style="font-size: 14px; color: #374151;">📋 HISTORY</span> </button>
+    <nav style="padding: 16px;"><button type="button" class="nav-item active w-full text-left px-4 py-3 rounded-lg mb-2" data-target="dashboard" style="background: none; border: none; cursor: pointer;"> <span style="font-size: 14px; color: #374151;">�� DASHBOARD</span> </button> <button type="button" class="nav-item w-full text-left px-4 py-3 rounded-lg mb-2" data-target="input-ijp" style="background: none; border: none; cursor: pointer;"> <span style="font-size: 14px; color: #374151;">➕ INPUT IJP</span> </button> <button type="button" class="nav-item w-full text-left px-4 py-3 rounded-lg mb-2" data-target="monitoring" style="background: none; border: none; cursor: pointer;"> <span style="font-size: 14px; color: #374151;">⏱️ MONITORING</span> </button> <button type="button" class="nav-item w-full text-left px-4 py-3 rounded-lg mb-2" data-target="repair" style="background: none; border: none; cursor: pointer;"> <span style="font-size: 14px; color: #374151;">🔧 REPAIR</span> </button> <button type="button" class="nav-item w-full text-left px-4 py-3 rounded-lg mb-2" data-target="switching" style="background: none; border: none; cursor: pointer;"> <span style="font-size: 14px; color: #374151;">🔄 SWITCHING</span> </button> <button type="button" class="nav-item w-full text-left px-4 py-3 rounded-lg mb-2" data-target="history" style="background: none; border: none; cursor: pointer;"> <span style="font-size: 14px; color: #374151;">📋 HISTORY</span> </button>
     </nav>
    </aside><!-- Main Content -->
    <main class="flex-1 overflow-auto"><!-- Dashboard Section -->
@@ -655,7 +655,6 @@
         
         updateFilterOptions();
         applyFilters();
-        updateStats();
       } catch (error) {
         showToast('ERROR MEMUAT DASHBOARD: ' + error.message, 'error');
       }
@@ -710,6 +709,8 @@
       }
       
       renderTable(filteredData);
+      updateStats(filteredData);
+      updateTypeStats(filteredData);
     }
     
     // Render tables by department
@@ -780,20 +781,22 @@
     }
     
     // Update statistics
-    function updateStats() {
-      const total = allIjpData.length;
-      const aktif = allIjpData.filter(ijp => ijp.status === 'AKTIF').length;
-      const rusak = allIjpData.filter(ijp => ijp.status === 'RUSAK').length;
-      const maintenance = allIjpData.filter(ijp => ijp.cummulative_time > 9500).length;
+    function updateStats(data = allIjpData) {
+      const total = data.length;
+      const aktif = data.filter(ijp => ijp.status === 'AKTIF').length;
+      const rusak = data.filter(ijp => ijp.status === 'RUSAK').length;
+      const maintenance = data.filter(ijp => ijp.cummulative_time > 9500).length;
       
       document.getElementById('stat-total').textContent = total;
       document.getElementById('stat-aktif').textContent = aktif;
       document.getElementById('stat-rusak').textContent = rusak;
       document.getElementById('stat-maintenance').textContent = maintenance;
-      
-      // Update type statistics
+    }
+    
+    // Update type statistics
+    function updateTypeStats(data = allIjpData) {
       const typeStats = {};
-      allIjpData.forEach(ijp => {
+      data.forEach(ijp => {
         if (ijp.tipe_ijp) {
           typeStats[ijp.tipe_ijp] = (typeStats[ijp.tipe_ijp] || 0) + 1;
         }
@@ -1371,7 +1374,7 @@
     // Element SDK Implementation
     const defaultConfig = {
       app_title: 'SISTEM MONITORING IJP',
-      company_name: 'PT. DANKOS FARMA',
+      company_name: 'PT. CONTOH',
       primary_color: '#3b82f6',
       secondary_color: '#10b981',
       danger_color: '#ef4444',
@@ -1498,5 +1501,5 @@
       showToast('SISTEM MONITORING SIAP DIGUNAKAN', 'success');
     });
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9afb7e4ce2c17a69',t:'MTc2NjAyNzcwMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9afb9490b1abce26',t:'MTc2NjAyODYxMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
